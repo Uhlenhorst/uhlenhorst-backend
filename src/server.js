@@ -7,6 +7,7 @@ const cors = require('cors');
 const authRoutes = require('./routes.auth');
 const businessRoutes = require('./routes.businesses');
 const eventsRoutes = require('./routes.events');
+const forumRoutes = require('./routes.forum');
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -18,6 +19,7 @@ app.use(express.json());  // verarbeitet JSON-Anfragen
 app.use('/api/auth', authRoutes);
 app.use('/api/businesses', businessRoutes);
 app.use('/api/events', eventsRoutes);
+app.use('/api/forum', forumRoutes);
 
 // Einfacher Gesundheitscheck, um zu sehen ob der Server läuft
 app.get('/api/health', (req, res) => {
