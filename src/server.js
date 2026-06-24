@@ -1,38 +1,40 @@
-// Haupteinstiegspunkt des Backends — startet den Server und bindet alle Routen ein
+// Routen für Bild-Uploads (Cloudinary)
 
-require('dotenv').config();
+
 const express = require('express');
-const cors = require('cors');
+const router = express.Router();
+const { requireLogin } = require('./middleware');
 
-const authRoutes = require('./routes.auth');
-const businessRoutes = require('./routes.businesses');
-const eventsRoutes = require('./routes.events');
-const forumRoutes = require('./routes.forum');
-const shopRoutes = require('./routes.shop');
 
-const app = express();
-const PORT = process.env.PORT || 3000;
+const CLOUDINARY_CLOUD_NAME = process.env.CLOUDINARY_CLOUD_NAME;
+const CLOUDINARY_API_KEY = process.env.CLOUDINARY_API_KEY;
+const CLOUDINARY_API_SECRET = process.env.CLOUDINARY_API_SECRET;
 
-app.use(cors());
 
-// Wichtig: Die Stripe-Webhook-Route braucht die unveränderten "rohen" Daten,
-// deshalb wird sie VOR express.json() eingebunden.
-app.use('/api/shop/webhook/stripe', express.raw({ type: 'application/json' }));
+// ---------- Eingeloggt: Signatur für direkten Browser-Upload erzeugen ----------
+// Der Browser lädt das Bild direkt zu Cloudinary hoch (nicht über unseren Server),
+// braucht dafür aber eine "Signatur", die nur unser Server mit dem geheimen Schlüssel erzeugen kann.
+router.get('/signature', requireLogin, async (req, res) => {
+  try {
+    const crypto = require('crypto');
+    const timestamp = Math.round(Date.now() / 1000);
 
-app.use(express.json());  // verarbeitet JSON-Anfragen für alle anderen Routen
 
-// Routen einbinden
-app.use('/api/auth', authRoutes);
-app.use('/api/businesses', businessRoutes);
-app.use('/api/events', eventsRoutes);
-app.use('/api/forum', forumRoutes);
-app.use('/api/shop', shopRoutes);
+    const paramsToSign = `timestamp=${timestamp}${CLOUDINARY_API_SECRET}`;
+    const signature = crypto.createHash('sha1').update(paramsToSign).digest('hex');
 
-// Einfacher Gesundheitscheck, um zu sehen ob der Server läuft
-app.get('/api/health', (req, res) => {
-  res.json({ status: 'ok', message: 'Auf der Uhlenhorst – Backend läuft.' });
+
+    res.json({
+      timestamp,
+      signature,
+      apiKey: CLOUDINARY_API_KEY,
+      cloudName: CLOUDINARY_CLOUD_NAME,
+    });
+  } catch (err) {
+    console.error('Fehler beim Erzeugen der Upload-Signatur:', err);
+    res.status(500).json({ error: 'Signatur konnte nicht erzeugt werden.' });
+  }
 });
 
-app.listen(PORT, () => {
-  console.log(`Server läuft auf http://localhost:${PORT}`);
-});
+
+module.exports = router;
