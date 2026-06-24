@@ -6,11 +6,10 @@ const pool = require('./db');
 const { requireLogin, requireRole } = require('./middleware');
 
 // ---------- Öffentlich: alle freigegebenen Geschäfte anzeigen ----------
-// Wird auf der Startseite und im Verzeichnis verwendet, alphabetisch sortiert
 router.get('/', async (req, res) => {
   try {
     const result = await pool.query(
-      `SELECT id, name, category, description, address, latitude, longitude, phone, website
+      `SELECT id, name, category, description, address, latitude, longitude, phone, website, image_url
        FROM businesses
        WHERE status = 'freigegeben'
        ORDER BY name ASC`
@@ -23,9 +22,8 @@ router.get('/', async (req, res) => {
 });
 
 // ---------- Eingeloggte Nutzer: eigenes Geschäft eintragen ----------
-// Landet zunächst im Status "ausstehend" bis ein Admin es freigibt
 router.post('/', requireLogin, async (req, res) => {
-  const { name, category, description, address, latitude, longitude, phone, website } = req.body;
+  const { name, category, description, address, latitude, longitude, phone, website, image_url } = req.body;
 
   if (!name || !category || !address) {
     return res.status(400).json({ error: 'Name, Kategorie und Adresse sind erforderlich.' });
@@ -33,10 +31,10 @@ router.post('/', requireLogin, async (req, res) => {
 
   try {
     const result = await pool.query(
-      `INSERT INTO businesses (owner_id, name, category, description, address, latitude, longitude, phone, website, status)
-       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, 'ausstehend')
+      `INSERT INTO businesses (owner_id, name, category, description, address, latitude, longitude, phone, website, image_url, status)
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, 'ausstehend')
        RETURNING *`,
-      [req.user.userId, name, category, description, address, latitude, longitude, phone, website]
+      [req.user.userId, name, category, description, address, latitude, longitude, phone, website, image_url || null]
     );
     res.status(201).json({
       message: 'Dein Geschäft wurde eingereicht und wird in Kürze geprüft.',
@@ -68,7 +66,7 @@ router.get('/ausstehend', requireLogin, requireRole('admin'), async (req, res) =
 // ---------- Admin: Geschäft freigeben oder ablehnen ----------
 router.patch('/:id/status', requireLogin, requireRole('admin'), async (req, res) => {
   const { id } = req.params;
-  const { status } = req.body; // erwartet 'freigegeben' oder 'abgelehnt'
+  const { status } = req.body;
 
   if (!['freigegeben', 'abgelehnt'].includes(status)) {
     return res.status(400).json({ error: "Status muss 'freigegeben' oder 'abgelehnt' sein." });
@@ -93,6 +91,29 @@ router.patch('/:id/status', requireLogin, requireRole('admin'), async (req, res)
     res.status(500).json({ error: 'Aktion fehlgeschlagen.' });
   }
 });
+
+// ---------- Admin: Bild eines Geschäfts aktualisieren ----------
+router.patch('/:id/image', requireLogin, requireRole('admin'), async (req, res) => {
+  const { id } = req.params;
+  const { image_url } = req.body;
+
+  try {
+    const result = await pool.query(
+      `UPDATE businesses SET image_url = $1 WHERE id = $2 RETURNING *`,
+      [image_url || null, id]
+    );
+
+    if (result.rows.length === 0) {
+      return res.status(404).json({ error: 'Geschäft nicht gefunden.' });
+    }
+
+    res.json({ message: 'Bild aktualisiert.', business: result.rows[0] });
+  } catch (err) {
+    console.error('Fehler beim Aktualisieren des Bildes:', err);
+    res.status(500).json({ error: 'Aktualisierung fehlgeschlagen.' });
+  }
+});
+
 // ---------- Admin: Geschäft endgültig löschen ----------
 router.delete('/:id', requireLogin, requireRole('admin'), async (req, res) => {
   const { id } = req.params;
@@ -110,4 +131,5 @@ router.delete('/:id', requireLogin, requireRole('admin'), async (req, res) => {
     res.status(500).json({ error: 'Löschen fehlgeschlagen.' });
   }
 });
+
 module.exports = router;
