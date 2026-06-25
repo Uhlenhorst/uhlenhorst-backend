@@ -9,7 +9,7 @@ const { requireLogin, requireRole } = require('./middleware');
 router.get('/', async (req, res) => {
   try {
     const result = await pool.query(
-      `SELECT id, name, category, description, address, latitude, longitude, phone, website, image_url
+      `SELECT id, name, category, description, address, latitude, longitude, phone, website, image_url, business_email, whatsapp_number
        FROM businesses
        WHERE status = 'freigegeben'
        ORDER BY name ASC`
@@ -23,7 +23,7 @@ router.get('/', async (req, res) => {
 
 // ---------- Eingeloggte Nutzer: eigenes Geschäft eintragen ----------
 router.post('/', requireLogin, async (req, res) => {
-  const { name, category, description, address, latitude, longitude, phone, website, image_url } = req.body;
+  const { name, category, description, address, latitude, longitude, phone, website, image_url, business_email, whatsapp_number } = req.body;
 
   if (!name || !category || !address) {
     return res.status(400).json({ error: 'Name, Kategorie und Adresse sind erforderlich.' });
@@ -31,10 +31,10 @@ router.post('/', requireLogin, async (req, res) => {
 
   try {
     const result = await pool.query(
-      `INSERT INTO businesses (owner_id, name, category, description, address, latitude, longitude, phone, website, image_url, status)
-       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, 'ausstehend')
+      `INSERT INTO businesses (owner_id, name, category, description, address, latitude, longitude, phone, website, image_url, business_email, whatsapp_number, status)
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, 'ausstehend')
        RETURNING *`,
-      [req.user.userId, name, category, description, address, latitude, longitude, phone, website, image_url || null]
+      [req.user.userId, name, category, description, address, latitude, longitude, phone, website, image_url || null, business_email || null, whatsapp_number || null]
     );
     res.status(201).json({
       message: 'Dein Geschäft wurde eingereicht und wird in Kürze geprüft.',
