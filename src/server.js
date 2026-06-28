@@ -26,7 +26,11 @@ async function ensureSchema() {
       ALTER TABLE forum_posts
       ADD COLUMN IF NOT EXISTS image_url TEXT;
     `);
-    console.log('Datenbankschema geprüft: business_email, whatsapp_number und forum_posts.image_url sind vorhanden.');
+    await pool.query(`
+      ALTER TABLE events
+      ADD COLUMN IF NOT EXISTS image_url TEXT;
+    `);
+    console.log('Datenbankschema geprüft: alle neuen Spalten sind vorhanden (businesses, forum_posts, events).');
   } catch (err) {
     console.error('Fehler beim Prüfen/Erweitern des Datenbankschemas:', err);
   }
