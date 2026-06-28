@@ -22,7 +22,11 @@ async function ensureSchema() {
       ADD COLUMN IF NOT EXISTS business_email TEXT,
       ADD COLUMN IF NOT EXISTS whatsapp_number TEXT;
     `);
-    console.log('Datenbankschema geprüft: business_email und whatsapp_number sind vorhanden.');
+    await pool.query(`
+      ALTER TABLE forum_posts
+      ADD COLUMN IF NOT EXISTS image_url TEXT;
+    `);
+    console.log('Datenbankschema geprüft: business_email, whatsapp_number und forum_posts.image_url sind vorhanden.');
   } catch (err) {
     console.error('Fehler beim Prüfen/Erweitern des Datenbankschemas:', err);
   }
