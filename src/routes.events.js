@@ -9,7 +9,7 @@ const { requireLogin, requireRole } = require('./middleware');
 router.get('/', async (req, res) => {
   try {
     const result = await pool.query(
-      `SELECT e.id, e.title, e.description, e.location, e.starts_at, e.ends_at,
+      `SELECT e.id, e.title, e.description, e.location, e.starts_at, e.ends_at, e.image_url,
               u.name AS created_by_name
        FROM events e
        LEFT JOIN users u ON u.id = e.created_by
@@ -36,7 +36,7 @@ router.get('/month', async (req, res) => {
     const endDate = new Date(startDate.getFullYear(), startDate.getMonth() + 1, 0);
 
     const result = await pool.query(
-      `SELECT e.id, e.title, e.description, e.location, e.starts_at, e.ends_at,
+      `SELECT e.id, e.title, e.description, e.location, e.starts_at, e.ends_at, e.image_url,
               u.name AS created_by_name
        FROM events e
        LEFT JOIN users u ON u.id = e.created_by
@@ -77,7 +77,7 @@ router.get('/:id', async (req, res) => {
 
 // ---------- Admin: neuen Termin anlegen ----------
 router.post('/', requireLogin, requireRole('admin'), async (req, res) => {
-  const { title, description, location, starts_at, ends_at } = req.body;
+  const { title, description, location, starts_at, ends_at, image_url } = req.body;
 
   if (!title || !starts_at) {
     return res.status(400).json({ error: 'Titel und Startdatum sind erforderlich.' });
@@ -92,10 +92,10 @@ router.post('/', requireLogin, requireRole('admin'), async (req, res) => {
     }
 
     const result = await pool.query(
-      `INSERT INTO events (created_by, title, description, location, starts_at, ends_at)
-       VALUES ($1, $2, $3, $4, $5, $6)
+      `INSERT INTO events (created_by, title, description, location, starts_at, ends_at, image_url)
+       VALUES ($1, $2, $3, $4, $5, $6, $7)
        RETURNING *`,
-      [req.user.userId, title, description, location, startDate.toISOString(), endDate ? endDate.toISOString() : null]
+      [req.user.userId, title, description, location, startDate.toISOString(), endDate ? endDate.toISOString() : null, image_url || null]
     );
 
     res.status(201).json({
@@ -111,7 +111,7 @@ router.post('/', requireLogin, requireRole('admin'), async (req, res) => {
 // ---------- Admin: Termin bearbeiten ----------
 router.patch('/:id', requireLogin, requireRole('admin'), async (req, res) => {
   const { id } = req.params;
-  const { title, description, location, starts_at, ends_at } = req.body;
+  const { title, description, location, starts_at, ends_at, image_url } = req.body;
 
   try {
     const existing = await pool.query('SELECT id FROM events WHERE id = $1', [id]);
@@ -142,6 +142,10 @@ router.patch('/:id', requireLogin, requireRole('admin'), async (req, res) => {
     if (ends_at !== undefined) {
       updateFields.push(`ends_at = $${paramCount++}`);
       values.push(ends_at ? new Date(ends_at).toISOString() : null);
+    }
+    if (image_url !== undefined) {
+      updateFields.push(`image_url = $${paramCount++}`);
+      values.push(image_url || null);
     }
 
     if (updateFields.length === 0) {
