@@ -92,7 +92,7 @@ router.get('/threads/:id', async (req, res) => {
     }
 
     const postsResult = await pool.query(
-      `SELECT p.id, p.body, p.created_at, p.author_id,
+      `SELECT p.id, p.body, p.created_at, p.author_id, p.image_url,
               u.name AS author_name
        FROM forum_posts p
        LEFT JOIN users u ON u.id = p.author_id
@@ -113,7 +113,7 @@ router.get('/threads/:id', async (req, res) => {
 
 // ---------- Eingeloggt: neuen Thread anlegen (mit erstem Beitrag) ----------
 router.post('/threads', requireLogin, async (req, res) => {
-  const { title, category_id, body } = req.body;
+  const { title, category_id, body, image_url } = req.body;
 
   if (!title || !body) {
     return res.status(400).json({ error: 'Titel und Text sind erforderlich.' });
@@ -130,10 +130,10 @@ router.post('/threads', requireLogin, async (req, res) => {
     const thread = threadResult.rows[0];
 
     const postResult = await pool.query(
-      `INSERT INTO forum_posts (thread_id, author_id, body)
-       VALUES ($1, $2, $3)
+      `INSERT INTO forum_posts (thread_id, author_id, body, image_url)
+       VALUES ($1, $2, $3, $4)
        RETURNING *`,
-      [thread.id, req.user.userId, body]
+      [thread.id, req.user.userId, body, image_url || null]
     );
 
     res.status(201).json({
