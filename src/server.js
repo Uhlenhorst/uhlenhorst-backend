@@ -56,7 +56,7 @@ async function ensureSchema() {
       ON CONFLICT (id) DO NOTHING;
     `, [DEFAULT_UHLENHORST_TEXT]);
     // Bilder zur Seite, optional als Vorher/Nachher-Paar über pair_group gruppiert
-   
+        await pool.query(`
       CREATE TABLE IF NOT EXISTS uhlenhorst_page_images (
         id SERIAL PRIMARY KEY,
         image_url TEXT NOT NULL,
