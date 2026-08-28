@@ -196,7 +196,34 @@ router.delete('/posts/:id', requireLogin, requireRole('admin'), async (req, res)
     res.status(500).json({ error: 'Löschen fehlgeschlagen.' });
   }
 });
+// ---------- Admin: Beitrag bearbeiten (Moderation) ----------
+router.patch('/posts/:id', requireLogin, requireRole('admin'), async (req, res) => {
+  const { id } = req.params;
+  const { body } = req.body;
 
+  if (!body || !body.trim()) {
+    return res.status(400).json({ error: 'Beitrag darf nicht leer sein.' });
+  }
+
+  try {
+    const result = await pool.query(
+      'UPDATE forum_posts SET body = $1 WHERE id = $2 RETURNING id, body',
+      [body.trim(), id]
+    );
+
+    if (result.rows.length === 0) {
+      return res.status(404).json({ error: 'Beitrag nicht gefunden.' });
+    }
+
+    res.json({
+      message: 'Beitrag geändert.',
+      post: result.rows[0]
+    });
+  } catch (err) {
+    console.error('Fehler beim Bearbeiten des Beitrags:', err);
+    res.status(500).json({ error: 'Bearbeiten fehlgeschlagen.' });
+  }
+});
 // ---------- Admin: Thread löschen (Moderation) ----------
 router.delete('/threads/:id', requireLogin, requireRole('admin'), async (req, res) => {
   const { id } = req.params;
