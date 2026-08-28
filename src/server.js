@@ -34,9 +34,12 @@ async function ensureSchema() {
       ADD COLUMN IF NOT EXISTS whatsapp_number TEXT;
     `);
     await pool.query(`
-      ALTER TABLE forum_posts
-      ADD COLUMN IF NOT EXISTS image_url TEXT;
-    `);
+  ALTER TABLE forum_posts
+  ADD COLUMN IF NOT EXISTS image_url TEXT,
+  ADD COLUMN IF NOT EXISTS is_hidden BOOLEAN NOT NULL DEFAULT FALSE,
+  ADD COLUMN IF NOT EXISTS hidden_at TIMESTAMPTZ,
+  ADD COLUMN IF NOT EXISTS hidden_by UUID REFERENCES users(id) ON DELETE SET NULL;
+`);
     await pool.query(`
       ALTER TABLE events
       ADD COLUMN IF NOT EXISTS image_url TEXT;
